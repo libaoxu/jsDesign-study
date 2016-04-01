@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>策略模式解析</title>
+    <style>
+        .gray-bg {
+            background-color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <!-- 为了简单实现效果, 把js更加体现清晰, 就不做样式等修改了,
+        之前做过香哈商城的收获地址, 那时候只是用if else 判断进行校验, 回过头看比较low,后来学一下策略模式, 觉得这种校验方式很棒
+
+        什么 解耦, 啥事解耦, 什么复用, 啥时候复用 , 我起初学习的时候都很迷乱
+        所以这里不说定义, 我也希望别人学习的时候,抛开什么设计模式, 抛开什么定义,
+        更主要明白函数执行方式, 参数调用, 传递等等基础的代码解读能力, 调试能力很重要, 为以后的成长做好准备!
+
+        最后, 不要为了用设计模式而用设计模式, 学好一种语言, 学一种思想, 我也在学习,现在只是分享一下我对代码的思考
+     -->
+    <form id="j_input_controll" action="">
+        用户名: <input type="text" name="name" id="j_name"> <br>
+        电话: <input type="tel" maxlength="11" name="tel" id="j_tel"> <br>
+        密码: <input type="password" name="password" id="j_password"> <br>
+        再次输入密码: <input type="password" name="rePassword" id="j_re_password"> <br>
+
+        <button type="button" id="j_save" value="保存">保存</button>
+    </form>
+
+    <script src="../js/strategy.js"></script>
+    <script>
+    (function(){
+        var oName = document.getElementById('j_name');
+        var oTel = document.getElementById('j_tel');
+        var oPassword = document.getElementById('j_password');
+        var oRePassword = document.getElementById('j_re_password');
+
+        var oSave = document.getElementById('j_save');
+                                                //这里在初始化时候, 就导入策略函数
+                                                //详见js/strategy.js
+        var inputValidator = (new InputValidators()).importStrategies(validationStrategies);
+        /*
+            我这里才四个输入框十几种验证, 用if else 可以解决
+            如果是十几个或更多输入框则工作量很大, 所有用策略模式
+            策略名: 策略函数
+                每次addValidator 都在策略堆(this.validators = [])中加一个  "执行"策略函数的"匿名方法"
+                再check()的之后, 依次再策略堆里拿出"匿名方法" [...].splice(), 并执行 策略函数, 验证结果
+                详见js/strategy.js, 每一个步骤都有说明
+
+            说的通俗点, 有一个数组, [fn1, fn2, fn3...]  , 然后一次循环这个数组, 并依次执行fn1, fn2, fn3...得到执行的结果的值.
+                        其中fn1, fn2 ...就是  isNoEmpty , isTelephone 对应的策略函数, 里面有验证的逻辑(就是策略)
+                        addValidator(); 就是把这些函数按照规则放到数组里
+         */
+        oSave.onclick = function () {
+            var result = inputValidator.emptyValidators()
+                         .addValidator('isNoEmpty', oName, '用户名不能为空', oName.value)
+                         .addValidator('minLength:6', oName, '用户名不小于6位', oName.value)
+                         .addValidator('isNoEmpty', oTel, '电话不能为空', oTel.value)
+                         .addValidator('equalLength:11', oTel, '电话号为11位', oTel.value)
+                         .addValidator('isTelephone', oTel, '请输入正确电话号', oTel.value)
+                         .addValidator('isNoEmpty', oPassword, '密码不能为空', oPassword.value)
+                         .addValidator('minLength:6', oPassword, '密码不小于6位', oPassword.value)
+                         .addValidator('isNoEmpty', oRePassword, '再次输入的密码不能为空', oRePassword.value)
+                         .addValidator('minLength:6', oRePassword, '再次输入的密码不小于6位', oRePassword.value)
+                         .addValidator('isEqual', oPassword, '两次输入密码不一致', oPassword.value, oRePassword.value)
+                         .check();
+            if (result) {
+                alert( result.errMsg );
+            } else {
+                alert('验证成功')
+            }
+
+        }
+
+
+    })();
+
+
+
+    </script>
+
+</body>
+</html>
