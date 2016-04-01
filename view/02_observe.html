@@ -2,17 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>观察者模式</title>
+    <title>观察者模式分析</title>
+    <meta name="author" content="libaoxu">
 </head>
 <body>
+    <div id="j_bind">一个元素bind自定义事件</div>
 
+    <div class="box">多个元素自定义事件</div>
+
+    <div class="box">多个元素自定义事件</div>
+
+    <div id="j_one">one自定义事件</div>
 
 <script>
     /*
         观察者模式应用很广泛的, 写js我们不经意之间都会用到,
-        比较经典的mvc mvvm等等都是基于观察着模式   
-    */
+        比较经典的mvc mvvm等等都是基于观察着模式, + 策略模式 + 组合模式等等, 我也在学习, 等整理好了会再分享
+        这里以比较简单的方式, 模拟jq的自定义事件, 来做个观察者模式的入门,
 
+        还是那句话, 应该脱离所谓的设计模式和jq源码等等,
+        我会用比较通俗的方式, 以一个刚入门的角度去分析, 就是函数调用, 参数传递,加上点面向对象
+
+        看到最后 你可能觉得 实现这个功能没有什么意义,
+            那是因为我bind 之后就  trigger了,
+            自定义事件 主要 就是给开发人员提供一个, 可以自由接口, 也可以给开发人员提供api,
+            比如 bootsrap里面的tab.js 控制trigger('tab.show')的时候, 就是用户调用tab.js api obj.('tab.show', function(){}) 执行的时候
+            详见 boostrap源码学习中的 js/tab.js(https://github.com/libaoxu/bootstrapJs-study) 及bootstrap tab的api(http://v3.bootcss.com/javascript/)
+    */
+    var EventsBao = function (el, opts) {
+        this.elements = document.querySelectorAll(el);
+
+    };
+    EventsBao.prototype = {
+        constructor: EventsBao,
+        bind: function (key, eventFn) {
+            var obj;
+            // 可能一次又多个元素传过去来绑定
+            for (var i = 0, iLen = this.elements.length; i < iLen; i++) {
+                obj = this.elements[i];
+                // 需要绑定的元素的 自定义属性 listenters, 如果不存在 就定义为 {}
+                obj.listeners = obj.listeners || {};
+                // 自定义属性listenters这个 json 是否存在关于[key]的值, 如果没有就 把该json对应的key的值变为数组
+                !obj.listeners[key] ? obj.listeners[key] = []: '';
+                // 再这个数组里加 事件方法, 如果该数组存在, 则每次bind 都会在该数组里添加一个"事件方法(eventFn)"(所谓的入栈了)
+                obj.listeners[key].push(eventFn);
+            }
+            return this;
+        },
+        trigger: function () {
+            var key, stack, eventFn, obj;
+            //得到第一个参数, 并且arguments减少第一个一个值,
+            //这里利用 Array原型下的方法, 主要是因为 arguments是类数组 不是真数组
+            key = Array.prototype.shift.call( arguments );
+
+            //依然这个道理, 有多个元素
+            for (var i = 0, iLen = this.elements.length; i < iLen; i++) {
+                obj = this.elements[i];
+                //得到bind时候的数组, (这里是一个栈)
+
+                stack = obj.listeners[key] || [];
+
+                //这个循环就是出栈
+                for ( var j = 0, jLen = stack.length; j < jLen; j++ ) {
+                    //事件方法 就是 bind 时候 传递进去的函数
+                    eventFn = stack[j];
+                    //通过一个桥接模式,把实现和抽象分离出来, 不用考虑eventFn 里面是具体怎么实现的
+                    // 并把刚刚截取之后的 arguments 传给eventFn
+                    // 如果当时绑定的 eventFn 里面返回值 为false, 则立即停止出线
+                    if ( eventFn.apply(this.element, arguments) === false ) {
+                        return this;
+                    }
+                }
+            }
+
+            return this;
+        },
+        remove: function (key) {
+            //只要存在 就 赋值为一个全新新的json
+            var obj;
+            for (var i = 0, iLen = this.elements.length; i < iLen; i++) {
+                this.elements[i].listeners[key] ? this.elements[i].listeners[key] = [] : 0;
+            }
+            return this;
+        },
+        one: function (key, eventFn) {
+            //清空所有
+            this.remove(key);
+            //再绑定, 这样保证只绑定一次
+            this.bind(key, eventFn);
+            return this;
+        }
+    };
+
+    //支持唯一绑定
+    var eBind = new EventsBao('#j_bind');
+    eBind.bind('bao-bind', function (data) {
+        console.log(data.name);
+    })
+    .bind('bao-bind', function (data) {
+        console.log(data.time);
+    })
+    .bind('bao-bind', function (data) {
+        if (!data.return) {
+            return false;
+        }
+        console.log('看看是否继续执行return');
+    })
+    .trigger('bao-bind', {
+        name: 'bao-bind,单元素绑定多次',
+        time: '2次',
+        return: false
+    });
+
+    //支持 多元素绑定
+    var eBox = new EventsBao('.box');
+    eBox.bind('bao-box', function (data) {
+        console.log(data.name);
+    }).
+    trigger('bao-box', {
+        'name': '多元素绑定'
+    });
+
+    //只绑定一次
+    var eOne = new EventsBao('#j_one');
+    eBind.one('bao-one', function (data) {
+        console.log(data.name);
+    })
+    .one('bao-one', function (data) {
+        console.log(data.time);
+    })
+    .trigger('bao-one', {
+        name: 'bao-one 单元素绑定一次',
+        time: '1次',
+        return: false
+    });
 </script>
 </body>
 </html>
